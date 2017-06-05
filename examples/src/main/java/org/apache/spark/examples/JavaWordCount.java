@@ -17,6 +17,7 @@
 
 package org.apache.spark.examples;
 
+import org.apache.spark.storage.BlockStatusListener;
 import scala.Tuple2;
 
 import org.apache.spark.api.java.JavaPairRDD;
@@ -26,6 +27,8 @@ import org.apache.spark.sql.SparkSession;
 import java.util.Arrays;
 import java.util.List;
 import java.util.regex.Pattern;
+import org.apache.spark.scheduler.StatsReportListener;
+import org.apache.spark.storage.StorageStatusListener;
 
 public final class JavaWordCount {
   private static final Pattern SPACE = Pattern.compile(" ");
@@ -37,11 +40,17 @@ public final class JavaWordCount {
       System.exit(1);
     }
 
+    StatsReportListener statsReportListener = new StatsReportListener();
+    BlockStatusListener blockStatusListener = new BlockStatusListener();
     SparkSession spark = SparkSession
       .builder()
       .appName("JavaWordCount")
       .getOrCreate();
+    StorageStatusListener storageStatusListener = new StorageStatusListener(spark.sparkContext().getConf());
 
+    spark.sparkContext().addSparkListener(statsReportListener );
+    spark.sparkContext().addSparkListener(blockStatusListener);
+    spark.sparkContext().addSparkListener(storageStatusListener);
     JavaRDD<String> lines = spark.read().textFile(args[0]).javaRDD();
 
     JavaRDD<String> words = lines.flatMap(s -> Arrays.asList(SPACE.split(s)).iterator());
